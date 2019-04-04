@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+#=========================HEADER=====================================|
+#AUTOR
+# Jefferson Rocha <root@slackjeff.com.br>
+#
+#PROGRAMA
+# Figs - Simples Loja de Senhas
+#
+#########MAPA
+### Comandos Banca
+# create    = Criar nova banca
+# open      = Editar dados na banca
+# printall  = Imprimi todas bancas disponiveis
+# close     = Fechar a banca
+#
+### Comando Gerais
+# end, quit = Fecha a loja e sai.
+# clear     = Apaga o buffer
+# ?, help   = Visualiza ajuda
+#====================================================================|
+
+#==========================VARIAVEIS
+PRG='figs'
+VERSION='1.0'
+EXT='.data'
+#======>Cores
+red='\033[31;1m'
+end='\033[m'
+
+#==========================TESTES
+# Diretório principal existe?
+if [[ ! -e "${HOME}/.${PRG}${EXT}" ]]; then
+    printf '%s\n\n' "Não identifiquei a loja disponivel!"
+    printf '%s\n' "O que você deseja fazer?"
+    printf '%s\n' "[1] Criar Nova Loja"
+    printf '%s\n' "[2] Importar uma nova Loja"
+    read choice
+    if [[ -z "$choice" ]] || [[ "$choice" != '1' ]] && [[ "$choice" != '2' ]]; then
+        echo "Não identifiquei está resposta."
+        exit 1
+    fi
+    case $choice in
+        1)
+            mkdir ${HOME}/.${PRG} >/dev/null || exit 1
+            printf '%s\n' "Loja Criada com sucesso."
+            printf '%s\n' "Agora defina uma senha para sua loja! Guarde está senha pois se você perder"
+            printf '%s\n\n' "Você não terá como recuperar."
+            pushd "${HOME}" &>/dev/null
+            if tar -czf - ".${PRG}" | openssl enc -e -aes256 -out ".${PRG}${EXT}"; then
+                rm -r ".${PRG}"
+                printf '%s\n' "A sua Loja está segura ;) Por favor rode ${PRG} novamente"
+                exit 0
+            else
+                exit 1    
+            fi
+        ;;
+        2)
+            echo "Para importar uma nova banca, copie o arquivo: .${PRG} para seu diretório home."
+            exit 0
+        ;;
+    esac
+fi
+
+#==========================BIBLIOTECAS
+# Carregando bibliotecas
+libdir=("/etc/${PRG}.conf" "/usr/libexec/${PRG}/core.sh")
+for load in "${libdir[@]}"; do
+    [[ -e "$load" ]] && source "$load"
+done
+
+trap CTRL_C int # Trapando CTRL + C
+
+#==========================INICIO
+# Descriptografando Data
+# e limpando buffer
+_DECRYPT || exit 1
+_CLEAN_BUFFER
+
+while true; do
+    read -p "${PRG}> " ch1 ch2 # input
+    case $ch1 in
+        create)
+            [[ -z "$ch2" ]] && { echo "Você precisa especificar o nome da banca para criação."; continue ;}
+            _CREATE "$ch2"
+        ;;
+        open)
+            [[ -z "$ch2" ]] && { echo "Você precisa especificar o nome da banca."; continue ;}
+            _OPEN "$ch2"
+        ;;
+        printall)
+            _PRINTALL
+        ;;
+        end|quit) _CRYPT; exit 0 ;;
+        exit) exit 0;;
+        \?|help) : ;;
+   esac
+done
